@@ -40,7 +40,7 @@ class RegreTransf(nn.Module):
         return x
     
 class MLP(nn.Module):
-    def __init__(self, input_size: int = 3, hidden_units: List[int] = [6, 12, 24, 12, 6, 3]):
+    def __init__(self, input_size: int = 9, hidden_units: List[int] = [6, 12, 24, 12, 6, 3]):
         super().__init__()
         # Model similar to previous section:
 
@@ -51,7 +51,7 @@ class MLP(nn.Module):
             all_layers.append(nn.ReLU()) 
             input_size = hidden_unit 
  
-        all_layers.append(nn.Linear(hidden_units[-1], 3)) 
+        all_layers.append(nn.Linear(hidden_units[-1], 4)) 
         all_layers.append(nn.Sigmoid()) 
 
         self.model = nn.Sequential(*all_layers)
