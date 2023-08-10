@@ -165,7 +165,11 @@ class RegreMPL(LightningModule):
             hidden_units: List[int] = [18, 12, 24, 12, 6, 4],
             lr: float = 1e-5, 
             r: float = 0.8,
-            data_expansion: int = 10000
+            data_expansion: int = 10000,
+            lambda_t_c: float = 1.,
+            lambda_abc_c: float = 1.,
+            lambda_T_d: float = 1., 
+            lambda_ABC_d: float = 1., 
             ):
         super().__init__()
         self.save_hyperparameters()
@@ -196,14 +200,31 @@ class RegreMPL(LightningModule):
             t_p, d_p)
         total_loss = t_closs + abc_closs + T_dloss + ABC_dloss
 
+        # # 计算损失函数的数量级
+        # magnitude1 = torch.log10(torch.tensor(loss1))
+        # magnitude2 = torch.log10(torch.tensor(loss2))
+
+        # # 根据数量级调整权重
+        # weight1 = 1.0 / magnitude1
+        # weight2 = 1.0 / magnitude2
+
+        # # 归一化权重
+        # total_weight = weight1 + weight2
+        # weight1 /= total_weight
+        # weight2 /= total_weight
+
         # Record these loss in tensorboard.
-        self.log("tr_t_closs", total_loss)
-        self.log("tr_abc_closs", total_loss)
-        self.log("tr_T_dloss", total_loss)
-        self.log("tr_ABC_dloss", total_loss)
-        self.log("tr_total_loss", total_loss)
+        self.log("tr_t_closs", t_closs)
+        self.log("tr_abc_closs", abc_closs)
+        self.log("tr_T_dloss", T_dloss)
+        self.log("tr_ABC_dloss", ABC_dloss)
+        self.log("tr_total_loss", total_loss, on_epoch=True)
+        # self.log("tr_total_loss_epoch", total_loss, on_epoch=True)
         
-        return total_loss
+        return t_closs
+    
+    # version 2 T_dloss
+    # version 3 t_closs
 
     
     def validation_step(self, batch, batch_idx):
@@ -221,7 +242,7 @@ class RegreMPL(LightningModule):
 
         # Record these loss in tensorboard.
         self.log("va_t_closs", t_closs)
-        self.log("va_t_closs", T_dloss)
+        self.log("va_T_closs", T_dloss, on_epoch=True)
 
         return t_closs
 
@@ -249,32 +270,32 @@ class RegreMPL(LightningModule):
         return total_loss
 
     
-    def training_epoch_end(self, outputs: EPOCH_OUTPUT):
-        # pdb.set_trace()
-        loss_sum = 0
-        for i, item in enumerate(outputs):
-            loss_sum += item['loss'] 
-        loss_mean = loss_sum/len(outputs)
+    # def training_epoch_end(self, outputs: EPOCH_OUTPUT):
+    #     # pdb.set_trace()
+    #     loss_sum = 0
+    #     for i, item in enumerate(outputs):
+    #         loss_sum += item['loss'] 
+    #     loss_mean = loss_sum/len(outputs)
 
-        self.log('train_loss', loss_mean, prog_bar=True)
+    #     self.log('train_loss', loss_mean, prog_bar=True)
 
-    def test_epoch_end(self, outputs: EPOCH_OUTPUT):
-        loss_sum = 0
-        for i, item in enumerate(outputs):
-            loss_sum += item['loss'] 
-        loss_mean = loss_sum/len(outputs)
+    # def test_epoch_end(self, outputs: EPOCH_OUTPUT):
+    #     loss_sum = 0
+    #     for i, item in enumerate(outputs):
+    #         loss_sum += item['loss'] 
+    #     loss_mean = loss_sum/len(outputs)
 
-        self.log('test_loss', loss_mean)
-        # return loss_mean
+    #     self.log('test_loss', loss_mean)
+    #     # return loss_mean
     
-    def validate_epoch_end(self, outputs: EPOCH_OUTPUT):
-        loss_sum = 0
-        for i, item in enumerate(outputs):
-            loss_sum += item['loss'] 
-        loss_mean = loss_sum/len(outputs)
+    # def validate_epoch_end(self, outputs: EPOCH_OUTPUT):
+    #     loss_sum = 0
+    #     for i, item in enumerate(outputs):
+    #         loss_sum += item['loss'] 
+    #     loss_mean = loss_sum/len(outputs)
 
-        self.log('va_t_closs_epoch', loss_mean)
-        return loss_mean
+    #     self.log('va_t_closs_epoch', loss_mean)
+    #     return loss_mean
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), self.hparams.lr)
