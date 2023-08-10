@@ -221,6 +221,7 @@ class RegreMPL(LightningModule):
 
         # Record these loss in tensorboard.
         self.log("va_t_closs", t_closs)
+        self.log("va_t_closs", T_dloss)
 
         return t_closs
 
