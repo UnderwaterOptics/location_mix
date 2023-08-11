@@ -58,3 +58,53 @@ class MLP(nn.Module):
 
     def forward(self, x):
         return self.model(x)
+    
+
+class MPL1(nn.Module):
+    def __init__(self, 
+                 input_size: int = 9, 
+                 hidden_sizes: List[int] = [64, 256, 512,],
+                 output_sizes0: List[int] = [256, 128], 
+                 output_sizes1: List[int] = [256, 128], 
+                 output_size0: int = 3,
+                 output_size1: int = 1,
+                 ):
+        super(MPL1, self).__init__()
+
+        hidden_layers = []
+        for hidden_unit in hidden_sizes:
+            layer = nn.Linear(input_size, hidden_unit)
+            hidden_layers.append(layer)
+            hidden_layers.append(nn.ReLU())
+            input_size = hidden_unit
+        self.hidden_layers = nn.Sequential(*hidden_layers)
+
+        output_layers0 = []
+        input_size = hidden_sizes[-1]
+        for output_unit in output_sizes0:
+            layer = nn.Linear(input_size, output_unit)
+            output_layers0.append(layer)
+            output_layers0.append(nn.ReLU())
+            input_size = output_unit
+        output_layers0.append(nn.Linear(output_sizes0[-1], output_size0))
+        output_layers0.append(nn.Tanh())
+        self.output_layers0 = nn.Sequential(*output_layers0)
+        
+        output_layers1 = []
+        input_size = hidden_sizes[-1]
+        for output_unit in output_sizes1:
+            layer = nn.Linear(input_size, output_unit)
+            output_layers1.append(layer)
+            output_layers1.append(nn.ReLU())
+            input_size = output_unit
+        output_layers1.append(nn.Linear(output_sizes1[-1], output_size1))
+        output_layers1.append(nn.Sigmoid())
+        self.output_layers1 = nn.Sequential(*output_layers1)
+        
+    def forward(self, x):
+        x = self.hidden_layers(x)
+
+        t = self.output_layers0(x)
+        d = self.output_layers1(x)
+        
+        return t, d

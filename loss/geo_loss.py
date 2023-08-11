@@ -62,9 +62,14 @@ class GeoLoss(nn.Module):
         C1_dloss = self.mae(C1_d_p, C1_d.unsqueeze(dim=1))
 
         ABC_dloss =  (A1_dloss + B1_dloss + C1_dloss) / self.data_expansion * 10 / 3.
-        # pdb.set_trace()
 
-        return t_closs, abc_closs, T_dloss, ABC_dloss
+        # 坐标损失
+        T = t * d / self.data_expansion * 10
+        T_p = t_p * d_p / self.data_expansion * 10
+        # pdb.set_trace()
+        T_loss = self.mse(T, T_p)
+
+        return t_closs, abc_closs, T_dloss, ABC_dloss, T_loss
     
     def cosine_loss(self, A, B, dim = 1):
         return 1 - F.cosine_similarity(A, B, dim)

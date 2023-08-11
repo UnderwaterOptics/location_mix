@@ -58,7 +58,6 @@ class LocData(Dataset):
         A1_h, A1_v = A1.vec2ang
         B1_h, B1_v = B1.vec2ang
         C1_h, C1_v = C1.vec2ang
-        # pdb.set_trace()
         
         # 拼接成列向量
         ang = torch.stack([A1_h, A1_v, B1_h, B1_v, C1_h, C1_v])

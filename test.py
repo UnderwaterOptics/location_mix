@@ -147,13 +147,21 @@
 # y = net(x)
 # print(y.shape)
 
-from data.loc_data import LocData
-r = 0.8
-max_deg = 30
-max_x = 30
-min_x = r
-data_len = 100
+# from data.loc_data import LocData
+# r = 0.8
+# max_deg = 30
+# max_x = 30
+# min_x = r
+# data_len = 100
 
-loc_data = LocData(r, max_deg, max_x, data_len)
+# loc_data = LocData(r, max_deg, max_x, data_len)
 
-loc_data_sample = loc_data._sample_data()
+# loc_data_sample = loc_data._sample_data()
+
+
+from models.nets import MPL1
+import torch
+x = torch.randn(3, 9)
+net = MPL1()
+t, y = net(x)
+print(t, y)

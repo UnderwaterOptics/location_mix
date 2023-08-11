@@ -7,7 +7,7 @@ from torch import nn
 from typing import List, Tuple
 
 from loss.geo_loss import GeoLoss, Vector3D
-from models.nets import RegreTransf, MLP
+from models.nets import RegreTransf, MLP, MPL1
 
 import pdb
 
@@ -300,4 +300,129 @@ class RegreMPL(LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), self.hparams.lr)
         return optimizer
+    
+
+class RegreMPL1(LightningModule):
+    def __init__(self, 
+            input_size: int = 9, 
+            hidden_sizes: List[int] = [64, 256, 512,],
+            output_sizes0: List[int] = [256, 128], 
+            output_sizes1: List[int] = [256, 128], 
+            output_size0: int = 3,
+            output_size1: int = 1,
+            lr: float = 1e-5, 
+            r: float = 0.8,
+            data_expansion: int = 10000,
+            lambda_t_c: float = 1.,
+            lambda_abc_c: float = 1.,
+            lambda_T_d: float = 1., 
+            lambda_ABC_d: float = 1., 
+            ):
+        super().__init__()
+        self.save_hyperparameters()
+    
+        self.mpl = MPL1(input_size, hidden_sizes, output_sizes0, output_sizes1, output_size0, output_size1)
+        self.geo_loss = GeoLoss(self.hparams.r, self.hparams.data_expansion)
+
+    def forward(self, a1, b1, c1, d_max):
+        # Prepare input
+        x = torch.cat([a1, b1, c1], dim = 1)
+        t, d = self.mpl(x)
+
+        # Processing output
+        t_p = t / t.norm(dim=1).unsqueeze(dim=1)
+        d_p = d * d_max[0]
+
+        return t_p, d_p
+
+    def training_step(self, batch, batch_idx):
+        # prepare input data
+        a1, b1, c1, A1_d, B1_d, C1_d, T, t, d, d_max = batch
+        d = d.unsqueeze(dim=1)
+
+        # forward process
+        t_p, d_p = self(a1, b1, c1, d_max)
+  
+        # loss
+        t_closs, abc_closs, T_dloss, ABC_dloss, T_loss = self.geo_loss(a1, b1, c1, A1_d, B1_d, C1_d, t, d, 
+            t_p, d_p)
+        total_loss = t_closs + abc_closs + T_dloss + ABC_dloss
+
+        # # 计算损失函数的数量级
+        # magnitude1 = torch.log10(torch.tensor(loss1))
+        # magnitude2 = torch.log10(torch.tensor(loss2))
+
+        # # 根据数量级调整权重
+        # weight1 = 1.0 / magnitude1
+        # weight2 = 1.0 / magnitude2
+
+        # # 归一化权重
+        # total_weight = weight1 + weight2
+        # weight1 /= total_weight
+        # weight2 /= total_weight
+
+        # Record these loss in tensorboard.
+        self.log("tr_t_closs", t_closs)
+        self.log("tr_abc_closs", abc_closs)
+        self.log("tr_T_dloss", T_dloss)
+        self.log("tr_ABC_dloss", ABC_dloss)
+
+        self.log("tr_T_loss", T_loss, on_epoch=True)
+        # self.log("tr_total_loss_epoch", total_loss, on_epoch=True)
+        
+        return T_loss
+    
+    # version 2 T_dloss
+    # version 3 t_closs
+
+    
+    def validation_step(self, batch, batch_idx):
+        # prepare input data
+        a1, b1, c1, A1_d, B1_d, C1_d, T, t, d, d_max = batch
+        d = d.unsqueeze(dim=1)
+
+        # forward process
+        t_p, d_p = self(a1, b1, c1, d_max)
+  
+        # loss
+        t_closs, abc_closs, T_dloss, ABC_dloss, T_loss = self.geo_loss(a1, b1, c1, A1_d, B1_d, C1_d, t, d, 
+            t_p, d_p)
+        # total_loss = t_closs + abc_closs + T_dloss + ABC_dloss
+        # pdb.set_trace()
+        # Record these loss in tensorboard.
+        self.log("va_t_closs", t_closs, on_epoch=True)
+        self.log("va_T_dloss", T_dloss, on_epoch=True)
+        self.log("va_T_loss", T_loss, on_epoch=True)
+
+        return T_loss
+
+
+    def test_step(self, batch, batch_idx):
+        # prepare input data
+        a1, b1, c1, A1_d, B1_d, C1_d, T, t, d, d_max = batch
+        d = d.unsqueeze(dim=1)
+
+        # forward process
+        t_p, d_p = self(a1, b1, c1, d_max)
+  
+        # loss
+        t_closs, abc_closs, T_dloss, ABC_dloss, T_loss = self.geo_loss(a1, b1, c1, A1_d, B1_d, C1_d, t, d, 
+            t_p, d_p)
+        total_loss = t_closs + abc_closs + T_dloss + ABC_dloss
+
+        # Record these loss in tensorboard.
+        self.log("te_t_closs", t_closs)
+        self.log("te_abc_closs", abc_closs)
+        self.log("te_T_dloss", T_dloss)
+        self.log("te_ABC_dloss", ABC_dloss)
+
+        self.log("te_T_loss", T_loss)
+
+        return total_loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), self.hparams.lr)
+        return optimizer
+
+
 
